@@ -2,43 +2,40 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('DockerHub')
-        IMAGE_NAME = 'theshubhamgour/flask-portfolio'   // ✅ FIXED
+        IMAGE_NAME = 'ahsan560/flask-portfolio'
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
                 git 'https://github.com/Ahsan560/flask-portfolio.git'
             }
         }
 
-        stage('Run Lint Test') {
-            steps {
-                bat 'pip install flake8'
-                bat 'flake8 . || exit 0'
-            }
-        }
-
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
                 bat 'docker build -t %IMAGE_NAME%:%BUILD_NUMBER% .'
             }
         }
 
-        stage('Push to DockerHub') {
+        stage('Docker Login & Push') {
             steps {
-                script {
+                withCredentials([usernamePassword(
+                    credentialsId: 'DockerHub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
                     bat '''
-                    echo %DOCKERHUB_CREDENTIALS_PSW% | docker login -u %DOCKERHUB_CREDENTIALS_USR% --password-stdin
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                     docker push %IMAGE_NAME%:%BUILD_NUMBER%
                     '''
                 }
             }
         }
 
-        stage('Deploy to Stage') {
+        stage('Run Container') {
             steps {
                 bat 'docker run -d -p 5000:5000 %IMAGE_NAME%:%BUILD_NUMBER%'
             }
@@ -46,7 +43,7 @@ pipeline {
     }
 
     post {
-        success { echo '✅ Build, Test, Deploy successful!' }
-        failure { echo '❌ Pipeline failed. Check logs.' }
+        success { echo '✅ SUCCESS' }
+        failure { echo '❌ FAILED' }
     }
 }
